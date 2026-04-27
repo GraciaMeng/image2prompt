@@ -322,13 +322,15 @@ export function ensureOverlayStyles() {
       width: fit-content;
       justify-self: end;
       min-height: var(--toolbar-button-height, 46px);
-      padding: 0 var(--toolbar-padding-inline, 12px) 0 10px;
+      padding: 0 var(--toolbar-padding-inline, 12px) 0 8px;
       position: relative;
-      border: 1px solid rgba(255, 255, 255, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.22);
       border-radius: 16px;
-      background: rgba(160, 153, 143, 0.96);
+      background: rgba(160, 153, 143, 0.72);
       color: rgba(255, 255, 255, 0.96);
       cursor: pointer;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       transition:
         transform 160ms ease,
         background 160ms ease,
@@ -341,17 +343,17 @@ export function ensureOverlayStyles() {
     }
     .image2prompt-hover-button:hover {
       transform: translateY(-1px);
-      background: rgba(166, 159, 149, 0.98);
-      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12);
-      border-color: rgba(255, 255, 255, 0.36);
+      background: rgba(166, 159, 149, 0.8);
+      box-shadow: 0 10px 18px rgba(0, 0, 0, 0.12);
+      border-color: rgba(255, 255, 255, 0.3);
     }
     .image2prompt-hover-button.is-primary {
-      background: rgba(169, 163, 154, 0.98);
+      background: rgba(169, 163, 154, 0.8);
       color: rgba(255, 255, 255, 0.98);
-      border-color: rgba(255, 255, 255, 0.34);
+      border-color: rgba(255, 255, 255, 0.28);
     }
     .image2prompt-hover-button.is-primary:hover {
-      background: rgba(182, 176, 166, 1);
+      background: rgba(182, 176, 166, 0.86);
     }
     .image2prompt-hover-button:disabled {
       opacity: 0.58;
@@ -359,8 +361,8 @@ export function ensureOverlayStyles() {
       transform: none;
     }
     .image2prompt-hover-icon-shell {
-      width: var(--toolbar-icon-size, 30px);
-      height: var(--toolbar-icon-size, 30px);
+      width: calc(var(--toolbar-icon-size, 30px) + 2px);
+      height: calc(var(--toolbar-icon-size, 30px) + 2px);
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -389,7 +391,7 @@ export function ensureOverlayStyles() {
     .image2prompt-hover-text-wrap {
       position: relative;
       min-width: 0;
-      margin-left: 6px;
+      margin-left: 4px;
       display: inline-flex;
       align-items: center;
       justify-content: flex-start;
@@ -398,7 +400,7 @@ export function ensureOverlayStyles() {
     .image2prompt-hover-label {
       position: relative;
       z-index: 1;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
       letter-spacing: 0.01em;
       line-height: 1;
@@ -478,7 +480,7 @@ export function ensureOverlayStyles() {
         background: transparent;
       }
       .image2prompt-hover-label {
-        font-size: 13px;
+        font-size: 12px;
       }
     }
     @keyframes image2prompt-fade-in {

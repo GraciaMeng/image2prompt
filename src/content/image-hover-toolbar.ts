@@ -1,29 +1,27 @@
 import { hasVisibleOverlay, startAnalyzeForImage } from "./analyze-controller";
 import { openOptionsPageFromContent } from "./extension-actions";
-import { findHoverTargetAtPoint, getVisibleImageRect, isHoverEligibleImage } from "./image-target-tracker";
+import { getVisibleImageRect, isHoverEligibleImage } from "./image-target-tracker";
 import { ensureOverlayStyles } from "./prompt-overlay.css";
 
 const TOOLBAR_ID = "image2prompt-hover-toolbar";
-const HIDE_DELAY = 120;
 const VIEWPORT_MARGIN = 12;
 const INSET_MARGIN = 16;
-const HOVER_SAFE_MARGIN = 18;
 const TOOLBAR_LAYOUTS = {
   large: {
     width: 156,
-    buttonHeight: 46,
+    buttonHeight: 40,
     iconSize: 18,
     labelMode: "full" as const
   },
   medium: {
     width: 118,
-    buttonHeight: 42,
+    buttonHeight: 38,
     iconSize: 18,
     labelMode: "short" as const
   },
   small: {
     width: 52,
-    buttonHeight: 40,
+    buttonHeight: 36,
     iconSize: 18,
     labelMode: "icon" as const
   }
@@ -92,7 +90,18 @@ export function startHoverToolbar() {
   let hideTimer: number | null = null;
   let frame: number | null = null;
   let pendingAnalyze = false;
-  let lastPointer: { x: number; y: number } | null = null;
+  const boundImages = new WeakSet<HTMLImageElement>();
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const node of Array.from(mutation.addedNodes)) {
+        if (node instanceof HTMLImageElement) {
+          bindImage(node);
+        } else if (node instanceof HTMLElement) {
+          node.querySelectorAll("img").forEach((image) => bindImage(image as HTMLImageElement));
+        }
+      }
+    }
+  });
 
   const clearHideTimer = () => {
     if (hideTimer !== null) {
@@ -101,21 +110,27 @@ export function startHoverToolbar() {
     }
   };
 
-  const isPointInsideHoverZone = (x: number, y: number) => {
-    if (!activeImage) {
-      return false;
+  const bindImage = (image: HTMLImageElement) => {
+    if (boundImages.has(image)) {
+      return;
     }
 
-    const imageRect = activeImage.getBoundingClientRect();
-    const toolbarRect = toolbar.hidden ? null : toolbar.getBoundingClientRect();
+    boundImages.add(image);
+    image.addEventListener("pointerenter", () => {
+      if (isHoverEligibleImage(image)) {
+        showToolbar(image);
+      }
+    });
+    image.addEventListener("pointerleave", (event) => {
+      const relatedTarget = event.relatedTarget as Node | null;
+      if (relatedTarget && toolbar.contains(relatedTarget)) {
+        return;
+      }
 
-    const insideExpandedRect = (rect: DOMRect, padding: number) =>
-      x >= rect.left - padding &&
-      x <= rect.right + padding &&
-      y >= rect.top - padding &&
-      y <= rect.bottom + padding;
-
-    return insideExpandedRect(imageRect, HOVER_SAFE_MARGIN) || (toolbarRect ? insideExpandedRect(toolbarRect, HOVER_SAFE_MARGIN) : false);
+      if (activeImage === image) {
+        hideToolbar();
+      }
+    });
   };
 
   const scheduleUpdate = () => {
@@ -145,8 +160,8 @@ export function startHoverToolbar() {
       toolbar.dataset.mode = mode;
       toolbar.style.setProperty("--toolbar-button-height", `${layout.buttonHeight}px`);
       toolbar.style.setProperty("--toolbar-icon-size", `${layout.iconSize}px`);
-      toolbar.style.setProperty("--toolbar-padding-inline", mode === "large" ? "12px" : mode === "medium" ? "10px" : "8px");
-      toolbar.style.setProperty("--toolbar-gap", mode === "large" ? "8px" : "6px");
+      toolbar.style.setProperty("--toolbar-padding-inline", mode === "large" ? "10px" : mode === "medium" ? "8px" : "7px");
+      toolbar.style.setProperty("--toolbar-gap", mode === "large" ? "6px" : "4px");
       toolbar.hidden = false;
       toolbar.style.visibility = "hidden";
       const toolbarWidth = toolbar.offsetWidth || layout.width;
@@ -191,48 +206,20 @@ export function startHoverToolbar() {
     toolbar.dataset.visible = "false";
   };
 
-  const scheduleHide = () => {
+  toolbar.addEventListener("pointerenter", () => {
     clearHideTimer();
-    hideTimer = window.setTimeout(() => {
-      if (pendingAnalyze) {
-        return;
-      }
+  });
+
+  toolbar.addEventListener("pointerleave", (event) => {
+    const relatedTarget = event.relatedTarget as Node | null;
+    if (relatedTarget && activeImage?.contains(relatedTarget)) {
+      return;
+    }
+
+    if (activeImage) {
       hideToolbar();
-    }, HIDE_DELAY);
-  };
-
-  document.addEventListener(
-    "pointermove",
-    (event) => {
-      lastPointer = { x: event.clientX, y: event.clientY };
-      const targetNode = event.target as Node | null;
-
-      if (toolbar.contains(targetNode) || isPointInsideHoverZone(event.clientX, event.clientY)) {
-        clearHideTimer();
-        return;
-      }
-
-      const image = findHoverTargetAtPoint(event.clientX, event.clientY);
-      if (image) {
-        showToolbar(image);
-      } else {
-        scheduleHide();
-      }
-    },
-    true
-  );
-
-  document.addEventListener(
-    "pointerdown",
-    (event) => {
-      if (toolbar.contains(event.target as Node | null)) {
-        return;
-      }
-
-      scheduleHide();
-    },
-    true
-  );
+    }
+  });
 
   document.addEventListener(
     "scroll",
@@ -270,33 +257,30 @@ export function startHoverToolbar() {
     }
   });
 
+  const startObservingImages = () => {
+    if (!document.body) {
+      return;
+    }
+
+    observer.observe(document.body, { childList: true, subtree: true });
+    document.querySelectorAll("img").forEach((image) => bindImage(image as HTMLImageElement));
+  };
+
+  if (document.body) {
+    startObservingImages();
+  } else {
+    document.addEventListener("DOMContentLoaded", startObservingImages, { once: true });
+  }
+
   document.addEventListener(
     "load",
     (event) => {
-      if (!(event.target instanceof HTMLImageElement) || !lastPointer || hasVisibleOverlay()) {
-        return;
-      }
-
-      const rect = event.target.getBoundingClientRect();
-      if (
-        lastPointer.x >= rect.left &&
-        lastPointer.x <= rect.right &&
-        lastPointer.y >= rect.top &&
-        lastPointer.y <= rect.bottom
-      ) {
-        showToolbar(event.target);
+      if (event.target instanceof HTMLImageElement) {
+        bindImage(event.target);
       }
     },
     true
   );
-
-  toolbar.addEventListener("pointerenter", () => {
-    clearHideTimer();
-  });
-
-  toolbar.addEventListener("pointerleave", () => {
-    scheduleHide();
-  });
 
   analyzeButton.addEventListener("click", async () => {
     const targetImage = activeImage;
