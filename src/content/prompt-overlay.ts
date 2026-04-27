@@ -20,13 +20,13 @@ const COPY_RESET_DELAY = 1500;
 export class PromptOverlay {
   private readonly host: HTMLDivElement;
   private readonly shell: HTMLDivElement;
-  private readonly content: HTMLPreElement;
   private readonly copyButton: HTMLButtonElement;
   private readonly retryButton: HTMLButtonElement;
   private readonly settingsButton: HTMLButtonElement;
   private readonly statusText: HTMLSpanElement;
   private readonly footerHint: HTMLSpanElement;
   private readonly trustNote: HTMLDivElement;
+  private readonly bodyText: HTMLPreElement;
   private readonly cleanupFns: Array<() => void> = [];
   private readonly scrollParents = new Set<EventTarget>();
 
@@ -56,21 +56,17 @@ export class PromptOverlay {
     const header = document.createElement("div");
     header.className = "image2prompt-header";
 
-    const headerMain = document.createElement("div");
-    headerMain.className = "image2prompt-header-main";
-
     const titleWrap = document.createElement("div");
     titleWrap.className = "image2prompt-title-wrap";
 
     const title = document.createElement("div");
     title.className = "image2prompt-title";
-    title.textContent = "Image to Prompt";
+    title.textContent = "抽取提示词";
 
     const subtitle = document.createElement("span");
     subtitle.className = "image2prompt-header-meta";
-    subtitle.textContent = "使用你自己的多模态模型提取可复用 Prompt";
+    subtitle.textContent = "正在将图片内容整理成可直接复用的提示词";
     titleWrap.append(title, subtitle);
-    headerMain.append(titleWrap);
 
     const closeButton = document.createElement("button");
     closeButton.className = "image2prompt-close";
@@ -78,7 +74,7 @@ export class PromptOverlay {
     closeButton.setAttribute("aria-label", "关闭浮层");
     closeButton.textContent = "×";
     closeButton.addEventListener("click", () => this.destroy());
-    header.append(headerMain, closeButton);
+    header.append(titleWrap, closeButton);
 
     const status = document.createElement("div");
     status.className = "image2prompt-status";
@@ -91,11 +87,11 @@ export class PromptOverlay {
 
     this.trustNote = document.createElement("div");
     this.trustNote.className = "image2prompt-trust-note";
-    this.trustNote.textContent = "使用你的 API 配置，结果可直接复制到现有工作流。";
+    this.trustNote.textContent = "结果会保留在本地页面浮层中，可随时复制或重试。";
 
-    this.content = document.createElement("pre");
-    this.content.className = "image2prompt-content";
-    this.content.textContent = "准备读取图片信息并发起 Prompt 提取...";
+    this.bodyText = document.createElement("pre");
+    this.bodyText.className = "image2prompt-content";
+    this.bodyText.textContent = "准备读取图片信息并发起 Prompt 提取...";
 
     const actions = document.createElement("div");
     actions.className = "image2prompt-actions";
@@ -103,7 +99,7 @@ export class PromptOverlay {
     this.copyButton = document.createElement("button");
     this.copyButton.className = "image2prompt-copy";
     this.copyButton.type = "button";
-    this.copyButton.textContent = "复制 Prompt";
+    this.copyButton.textContent = "复制文本";
     this.copyButton.disabled = true;
     this.copyButton.addEventListener("click", () => {
       void this.handleCopy();
@@ -122,28 +118,29 @@ export class PromptOverlay {
     this.settingsButton = document.createElement("button");
     this.settingsButton.className = "image2prompt-settings";
     this.settingsButton.type = "button";
-    this.settingsButton.textContent = "去设置页";
+    this.settingsButton.textContent = "去设置";
     this.settingsButton.hidden = true;
     this.settingsButton.addEventListener("click", () => {
       this.options.onOpenSettings?.();
     });
 
-    actions.append(this.copyButton, this.retryButton, this.settingsButton);
+    actions.append(this.retryButton, this.copyButton, this.settingsButton);
 
     const footer = document.createElement("div");
     footer.className = "image2prompt-footer";
 
     this.footerHint = document.createElement("span");
     this.footerHint.className = "image2prompt-footer-hint";
-    this.footerHint.textContent = "分析面板会跟随图片位置更新";
+    this.footerHint.textContent = "面板会跟随图片位置自动贴边";
     footer.append(this.footerHint);
 
-    this.shell.append(header, status, this.trustNote, this.content, actions, footer);
+    this.shell.append(header, status, this.trustNote, this.bodyText, actions, footer);
     this.host.append(this.shell);
     document.body.appendChild(this.host);
 
     this.bindLifecycleEvents();
     this.updatePhase("preparing", "正在准备图片分析任务...", "准备就绪");
+    this.syncContent();
     this.scheduleReposition();
   }
 
@@ -153,7 +150,7 @@ export class PromptOverlay {
     }
 
     this.accumulated += chunk;
-    this.content.textContent = this.accumulated;
+    this.syncContent();
     this.updatePhase("streaming", "正在分析图片并提取可复用 Prompt...", "分析进行中");
   }
 
@@ -173,7 +170,7 @@ export class PromptOverlay {
 
     const content = this.accumulated.trim();
     if (!content) {
-      this.content.textContent = "未收到可展示的结果，请重新分析一次。";
+      this.syncContent();
     }
 
     this.updatePhase("success", "Prompt 已生成，可直接复制并继续复用。", "结果已生成");
@@ -189,7 +186,7 @@ export class PromptOverlay {
     }
 
     const message = error.trim() || "分析失败，请稍后重试。";
-    this.content.textContent = `错误：${message}`;
+    this.bodyText.textContent = `错误：${message}`;
     this.updatePhase("error", message, "分析失败");
     this.copyButton.disabled = true;
     this.retryButton.disabled = false;
@@ -206,12 +203,12 @@ export class PromptOverlay {
 
     this.accumulated = "";
     this.clearTimers();
-    this.copyButton.textContent = "复制 Prompt";
+    this.copyButton.textContent = "复制文本";
     this.copyButton.disabled = true;
     this.retryButton.disabled = true;
     this.settingsButton.hidden = true;
     this.footerHint.textContent = "分析面板会跟随图片位置更新";
-    this.content.textContent = "准备读取图片信息并发起 Prompt 提取...";
+    this.syncContent();
     this.updatePhase("preparing", "正在准备图片分析任务...", "准备就绪");
     this.scheduleReposition();
   }
@@ -239,6 +236,13 @@ export class PromptOverlay {
     this.trustNote.textContent = meta;
   }
 
+  private syncContent() {
+    const text = this.accumulated.trim();
+    const fallback = "准备读取图片信息并发起 Prompt 提取...";
+    this.bodyText.textContent = text || fallback;
+    this.bodyText.className = "image2prompt-content";
+  }
+
   private async handleCopy() {
     if (!this.accumulated.trim() || this.copyButton.disabled) {
       return;
@@ -252,7 +256,7 @@ export class PromptOverlay {
         if (this.destroyed) {
           return;
         }
-        this.copyButton.textContent = "复制 Prompt";
+        this.copyButton.textContent = "复制文本";
         this.footerHint.textContent =
           this.lastPhase === "success"
             ? "结果已固定，可复制到你常用的工作流里继续使用"

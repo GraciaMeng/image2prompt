@@ -10,24 +10,24 @@ export function ensureOverlayStyles() {
   style.textContent = `
     .image2prompt-layer,
     .image2prompt-hover-toolbar {
-      --image2prompt-accent: #56a8ff;
-      --image2prompt-accent-strong: #dcecff;
-      --image2prompt-accent-ink: #052846;
-      --image2prompt-success: #6ec7ab;
-      --image2prompt-danger: #ff9da7;
-      --image2prompt-border: rgba(132, 170, 214, 0.24);
-      --image2prompt-line: rgba(220, 236, 255, 0.1);
-      --image2prompt-surface: rgba(7, 16, 28, 0.94);
-      --image2prompt-surface-strong: rgba(11, 24, 40, 0.98);
-      --image2prompt-surface-soft: rgba(86, 168, 255, 0.09);
-      --image2prompt-panel: rgba(255, 255, 255, 0.045);
-      --image2prompt-text: #edf5ff;
-      --image2prompt-muted: #93a8c3;
-      --image2prompt-text-soft: rgba(237, 245, 255, 0.74);
-      --image2prompt-ring: rgba(86, 168, 255, 0.24);
-      --image2prompt-shadow: 0 24px 60px rgba(2, 8, 16, 0.28);
-      font-family: "Avenir Next", "SF Pro Text", "Segoe UI", sans-serif;
-      color-scheme: dark;
+      --image2prompt-accent: #111111;
+      --image2prompt-accent-strong: #f4f4f2;
+      --image2prompt-accent-ink: #ffffff;
+      --image2prompt-success: #2d7d5c;
+      --image2prompt-danger: #b44b52;
+      --image2prompt-border: rgba(15, 18, 22, 0.12);
+      --image2prompt-line: rgba(15, 18, 22, 0.08);
+      --image2prompt-surface: rgba(255, 255, 255, 0.98);
+      --image2prompt-surface-strong: rgba(250, 250, 248, 0.98);
+      --image2prompt-surface-soft: rgba(17, 17, 17, 0.04);
+      --image2prompt-panel: rgba(17, 17, 17, 0.03);
+      --image2prompt-text: #111111;
+      --image2prompt-muted: #777777;
+      --image2prompt-text-soft: #666666;
+      --image2prompt-ring: rgba(17, 17, 17, 0.12);
+      --image2prompt-shadow: 0 20px 48px rgba(0, 0, 0, 0.14);
+      font-family: "Inter", "SF Pro Display", "SF Pro Text", "Segoe UI", sans-serif;
+      color-scheme: light;
     }
     .image2prompt-layer {
       position: fixed;
@@ -42,14 +42,12 @@ export function ensureOverlayStyles() {
       display: grid;
       gap: 12px;
       min-height: 300px;
-      padding: 16px;
-      border-radius: 24px;
+      padding: 18px 16px 16px;
+      border-radius: 28px;
       border: 1px solid var(--image2prompt-border);
-      background:
-        radial-gradient(circle at top right, rgba(86, 168, 255, 0.18), transparent 32%),
-        linear-gradient(180deg, var(--image2prompt-surface), var(--image2prompt-surface-strong));
+      background: linear-gradient(180deg, var(--image2prompt-surface), var(--image2prompt-surface-strong));
       box-shadow: var(--image2prompt-shadow);
-      backdrop-filter: blur(18px);
+      backdrop-filter: blur(22px);
       color: var(--image2prompt-text);
       overflow: hidden;
     }
@@ -58,63 +56,61 @@ export function ensureOverlayStyles() {
       position: absolute;
       inset: 0;
       background:
-        linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 30%),
-        radial-gradient(circle at 84% 12%, rgba(195, 227, 255, 0.11), transparent 22%);
+        linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0)),
+        radial-gradient(circle at 86% 8%, rgba(17, 17, 17, 0.04), transparent 26%);
       pointer-events: none;
     }
     .image2prompt-card[data-phase="success"] {
-      --image2prompt-accent: #6ec7ab;
-      --image2prompt-accent-strong: #d5fff0;
-      --image2prompt-accent-ink: #093829;
-      --image2prompt-ring: rgba(110, 199, 171, 0.24);
+      --image2prompt-accent: #0f7a50;
+      --image2prompt-accent-strong: #e7f6ef;
+      --image2prompt-accent-ink: #ffffff;
+      --image2prompt-ring: rgba(15, 122, 80, 0.16);
     }
     .image2prompt-card[data-phase="error"] {
-      --image2prompt-accent: #ff9da7;
-      --image2prompt-accent-strong: #ffe0e4;
-      --image2prompt-accent-ink: #4b0e19;
-      --image2prompt-ring: rgba(255, 157, 167, 0.24);
+      --image2prompt-accent: #b44b52;
+      --image2prompt-accent-strong: #fbebec;
+      --image2prompt-accent-ink: #ffffff;
+      --image2prompt-ring: rgba(180, 75, 82, 0.16);
     }
     .image2prompt-header {
       position: relative;
       z-index: 1;
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      gap: 12px;
-      align-items: center;
-    }
-    .image2prompt-header-main {
-      display: grid;
       gap: 10px;
-      min-width: 0;
+      align-items: start;
     }
     .image2prompt-title-wrap {
       display: grid;
-      gap: 6px;
+      gap: 8px;
       min-width: 0;
     }
     .image2prompt-title {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--image2prompt-accent-strong);
+      font-size: 20px;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      font-weight: 800;
+      color: var(--image2prompt-text);
     }
     .image2prompt-header-meta {
       font-size: 13px;
-      line-height: 1.5;
+      line-height: 1.55;
       color: var(--image2prompt-text-soft);
     }
     .image2prompt-close {
       width: 34px;
       height: 34px;
-      border: 1px solid var(--image2prompt-line);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(17, 17, 17, 0.08);
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(17, 17, 17, 0.03);
       color: var(--image2prompt-text);
       cursor: pointer;
       font-size: 18px;
       line-height: 1;
-      align-self: center;
+      padding: 0;
       transition:
         background 160ms ease,
         transform 160ms ease,
@@ -122,8 +118,8 @@ export function ensureOverlayStyles() {
       flex-shrink: 0;
     }
     .image2prompt-close:hover {
-      background: rgba(255, 255, 255, 0.1);
-      border-color: rgba(220, 236, 255, 0.2);
+      background: rgba(17, 17, 17, 0.06);
+      border-color: rgba(17, 17, 17, 0.12);
       transform: translateY(-1px);
     }
     .image2prompt-close:focus-visible,
@@ -140,10 +136,10 @@ export function ensureOverlayStyles() {
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 12px 14px;
-      border-radius: 16px;
-      border: 1px solid var(--image2prompt-line);
-      background: rgba(255, 255, 255, 0.04);
+      padding: 10px 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(17, 17, 17, 0.07);
+      background: rgba(17, 17, 17, 0.025);
       font-size: 12px;
       color: var(--image2prompt-text);
     }
@@ -176,42 +172,44 @@ export function ensureOverlayStyles() {
       position: relative;
       z-index: 1;
       margin: 0;
-      padding: 15px;
+      padding: 16px 18px;
       overflow: auto;
       white-space: pre-wrap;
       word-break: break-word;
-      font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
-      font-size: 12.5px;
-      line-height: 1.74;
-      min-height: 170px;
-      max-height: 320px;
-      border-radius: 18px;
-      border: 1px solid rgba(132, 170, 214, 0.16);
-      background:
-        linear-gradient(180deg, rgba(7, 14, 24, 0.82), rgba(10, 20, 34, 0.72)),
-        rgba(255, 255, 255, 0.03);
-      color: #f4f8ff;
+      font-family: "SF Mono", "SFMono-Regular", Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.78;
+      min-height: 230px;
+      max-height: 330px;
+      border-radius: 22px;
+      border: 1px solid rgba(17, 17, 17, 0.08);
+      background: #fafaf9;
+      color: #161616;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    }
+    .image2prompt-content.is-code {
+      background: #f5f6f7;
     }
     .image2prompt-content::-webkit-scrollbar {
       width: 10px;
     }
     .image2prompt-content::-webkit-scrollbar-thumb {
       border-radius: 999px;
-      background: rgba(220, 236, 255, 0.16);
-      border: 2px solid rgba(8, 16, 28, 0.55);
+      background: rgba(17, 17, 17, 0.14);
+      border: 2px solid rgba(250, 250, 249, 0.82);
     }
     .image2prompt-actions {
       position: relative;
       z-index: 1;
       display: flex;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       gap: 10px;
     }
     .image2prompt-copy,
     .image2prompt-retry,
     .image2prompt-settings {
-      min-height: 40px;
-      border-radius: 14px;
+      min-height: 42px;
+      border-radius: 16px;
       padding: 10px 14px;
       border: 1px solid transparent;
       font-size: 13px;
@@ -229,15 +227,15 @@ export function ensureOverlayStyles() {
       transform: translateY(-1px);
     }
     .image2prompt-copy {
-      background: linear-gradient(135deg, var(--image2prompt-accent-strong), var(--image2prompt-accent));
-      color: var(--image2prompt-accent-ink);
-      flex: 1;
+      flex: 1 1 0;
+      background: linear-gradient(180deg, #151515, #050505);
+      color: #ffffff;
     }
-    .image2prompt-retry,
     .image2prompt-settings {
-      background: rgba(255, 255, 255, 0.05);
-      border-color: var(--image2prompt-line);
+      background: #ffffff;
+      border-color: rgba(17, 17, 17, 0.1);
       color: var(--image2prompt-text);
+      flex: 1 1 0;
     }
     .image2prompt-copy:disabled,
     .image2prompt-retry:disabled,
