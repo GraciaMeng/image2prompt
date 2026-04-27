@@ -111,6 +111,48 @@ export function parseSseEventBlock(rawBlock: string, requestId: string): ParsedS
   };
 }
 
+export function parseSseEventData(data: string, requestId: string): ParsedSsePayload {
+  const normalized = data.trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  if (normalized === "[DONE]") {
+    return {
+      type: "STREAM_DONE",
+      requestId
+    };
+  }
+
+  let parsed: StreamApiPayload;
+  try {
+    parsed = JSON.parse(normalized) as StreamApiPayload;
+  } catch {
+    return null;
+  }
+
+  if (parsed.error?.message) {
+    return {
+      type: "STREAM_ERROR",
+      requestId,
+      error: parsed.error.message
+    };
+  }
+
+  const chunkContent = parsed.choices?.[0]?.delta?.content ?? parsed.choices?.[0]?.message?.content;
+  const chunk = normalizeChunkContent(chunkContent);
+  if (!chunk) {
+    return null;
+  }
+
+  return {
+    type: "STREAM_CHUNK",
+    requestId,
+    chunk
+  };
+}
+
 function normalizeChunkContent(content: StreamChunkContent): string {
   if (typeof content === "string") {
     return content;

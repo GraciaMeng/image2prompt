@@ -1,5 +1,6 @@
 import { addAnalysisRecord, getSettingsStore } from "../shared/storage";
 import { getSettingsIssues } from "../shared/settings-status";
+import { fetchEventSource } from "@fortaine/fetch-event-source";
 import type {
   AnalyzeImageMessage,
   ContentMessage,
@@ -10,7 +11,7 @@ import type {
 import { FIRST_CHUNK_TIMEOUT_MS } from "./llm-client/constants";
 import { prepareModelImage } from "./llm-client/image-prepare";
 import { buildAnalysisRequestBody, getChatCompletionsUrl } from "./llm-client/provider-request";
-import { createSseEventParser, type ParsedSseEvent } from "./llm-client/stream-parser";
+import { parseSseEventData, type ParsedSseEvent } from "./llm-client/stream-parser";
 
 export function registerAnalysisHandler() {
   chrome.runtime.onMessage.addListener((message: RuntimeMessage, sender) => {
@@ -34,6 +35,7 @@ async function streamAnalysis(tabId: number, message: AnalyzeImageMessage) {
   let emittedAnyChunk = false;
   let finalOutput = "";
   let firstChunkTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
+  const abortController = new AbortController();
 
   const issues = getSettingsIssues(settings);
   if (issues.length > 0) {
@@ -56,24 +58,9 @@ async function streamAnalysis(tabId: number, message: AnalyzeImageMessage) {
       `图片已处理（${preparedImage.mimeType}，${formatBytes(preparedImage.size)}），正在提交给大模型...`
     );
 
-    const response = await fetch(getChatCompletionsUrl(settings.baseUrl), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${settings.apiKey}`
-      },
-      body: JSON.stringify(buildAnalysisRequestBody(settings, message, preparedImage.modelImageUrl))
-    });
-
-    if (!response.ok || !response.body) {
-      throw new Error(await getErrorMessage(response));
-    }
-
     await emitStatus(tabId, message.requestId, "请求已发出，等待模型返回...");
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder("utf-8");
-    const parser = createSseEventParser(message.requestId);
     firstChunkTimer = globalThis.setTimeout(() => {
+      abortController.abort();
       void emitToTab(tabId, {
         type: "STREAM_ERROR",
         requestId: message.requestId,
@@ -82,23 +69,33 @@ async function streamAnalysis(tabId: number, message: AnalyzeImageMessage) {
       });
     }, FIRST_CHUNK_TIMEOUT_MS);
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        break;
+    await fetchEventSource(getChatCompletionsUrl(settings.baseUrl), {
+      method: "POST",
+      signal: abortController.signal,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${settings.apiKey}`
+      },
+      body: JSON.stringify(buildAnalysisRequestBody(settings, message, preparedImage.modelImageUrl)),
+      async onopen(response) {
+        if (!response.ok) {
+          throw new Error(await getErrorMessage(response));
+        }
+      },
+      onmessage(event) {
+        const parsedEvent = parseSseEventData(event.data, message.requestId);
+        if (parsedEvent) {
+          void emitParsedEvents([parsedEvent]);
+        }
+      },
+      onerror(error) {
+        throw error;
       }
+    });
 
-      const events = parser.push(decoder.decode(value, { stream: true }));
-      const shouldStop = await emitParsedEvents(events);
-      if (shouldStop) {
-        break;
-      }
-    }
-
-    const trailingEvents = parser.flush();
-    await emitParsedEvents(trailingEvents);
     if (firstChunkTimer !== null) {
       clearTimeout(firstChunkTimer);
+      firstChunkTimer = null;
     }
 
     if (!emittedAnyChunk) {

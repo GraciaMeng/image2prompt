@@ -24,13 +24,9 @@ export class PromptOverlay {
   private readonly copyButton: HTMLButtonElement;
   private readonly retryButton: HTMLButtonElement;
   private readonly settingsButton: HTMLButtonElement;
-  private readonly headerMeta: HTMLSpanElement;
   private readonly statusText: HTMLSpanElement;
   private readonly footerHint: HTMLSpanElement;
   private readonly trustNote: HTMLDivElement;
-  private readonly phaseBadge: HTMLSpanElement;
-  private readonly metricsValue: HTMLSpanElement;
-  private readonly streamValue: HTMLSpanElement;
   private readonly cleanupFns: Array<() => void> = [];
   private readonly scrollParents = new Set<EventTarget>();
 
@@ -70,35 +66,11 @@ export class PromptOverlay {
     title.className = "image2prompt-title";
     title.textContent = "Image to Prompt";
 
-    this.headerMeta = document.createElement("span");
-    this.headerMeta.className = "image2prompt-header-meta";
-    this.headerMeta.textContent = "使用你自己的多模态模型提取可复用 Prompt";
-    titleWrap.append(title, this.headerMeta);
-
-    const metaStrip = document.createElement("div");
-    metaStrip.className = "image2prompt-meta-strip";
-
-    this.phaseBadge = document.createElement("span");
-    this.phaseBadge.className = "image2prompt-phase-badge";
-    this.phaseBadge.textContent = "准备中";
-
-    const metrics = document.createElement("div");
-    metrics.className = "image2prompt-rail-metrics";
-    metrics.innerHTML = `<span class="image2prompt-metric-label">长度</span>`;
-    this.metricsValue = document.createElement("span");
-    this.metricsValue.className = "image2prompt-metric-value";
-    this.metricsValue.textContent = "0 字";
-    metrics.append(this.metricsValue);
-
-    const stream = document.createElement("div");
-    stream.className = "image2prompt-rail-metrics";
-    stream.innerHTML = `<span class="image2prompt-metric-label">状态</span>`;
-    this.streamValue = document.createElement("span");
-    this.streamValue.className = "image2prompt-metric-value";
-    this.streamValue.textContent = "排队";
-    stream.append(this.streamValue);
-    metaStrip.append(this.phaseBadge, metrics, stream);
-    headerMain.append(titleWrap, metaStrip);
+    const subtitle = document.createElement("span");
+    subtitle.className = "image2prompt-header-meta";
+    subtitle.textContent = "使用你自己的多模态模型提取可复用 Prompt";
+    titleWrap.append(title, subtitle);
+    headerMain.append(titleWrap);
 
     const closeButton = document.createElement("button");
     closeButton.className = "image2prompt-close";
@@ -216,8 +188,9 @@ export class PromptOverlay {
       return;
     }
 
-    this.content.textContent = error.trim() || "分析失败，请稍后重试。";
-    this.updatePhase("error", "本次分析失败，请检查配置、网络或稍后重试。", "暂时失败");
+    const message = error.trim() || "分析失败，请稍后重试。";
+    this.content.textContent = `错误：${message}`;
+    this.updatePhase("error", message, "分析失败");
     this.copyButton.disabled = true;
     this.retryButton.disabled = false;
     this.settingsButton.hidden = !options.showSettingsAction;
@@ -263,10 +236,7 @@ export class PromptOverlay {
     this.host.dataset.phase = phase;
     this.shell.dataset.phase = phase;
     this.statusText.textContent = status;
-    this.headerMeta.textContent = meta;
-    this.phaseBadge.textContent = meta;
-    this.streamValue.textContent = phase === "preparing" ? "排队" : phase === "success" ? "完成" : phase === "error" ? "异常" : "流式";
-    this.metricsValue.textContent = `${this.accumulated.trim().length || 0} 字`;
+    this.trustNote.textContent = meta;
   }
 
   private async handleCopy() {

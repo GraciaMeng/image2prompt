@@ -80,7 +80,7 @@ export function ensureOverlayStyles() {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
       gap: 12px;
-      align-items: start;
+      align-items: center;
     }
     .image2prompt-header-main {
       display: grid;
@@ -104,42 +104,6 @@ export function ensureOverlayStyles() {
       line-height: 1.5;
       color: var(--image2prompt-text-soft);
     }
-    .image2prompt-meta-strip {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .image2prompt-phase-badge,
-    .image2prompt-rail-metrics {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      min-height: 28px;
-      padding: 0 10px;
-      border-radius: 999px;
-      border: 1px solid var(--image2prompt-line);
-      background: rgba(255, 255, 255, 0.04);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-    }
-    .image2prompt-phase-badge {
-      color: var(--image2prompt-accent-strong);
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-    .image2prompt-metric-label {
-      font-size: 10px;
-      color: var(--image2prompt-muted);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-    .image2prompt-metric-value {
-      font-size: 11px;
-      color: var(--image2prompt-text);
-      font-weight: 700;
-      line-height: 1;
-    }
     .image2prompt-close {
       width: 34px;
       height: 34px;
@@ -150,6 +114,7 @@ export function ensureOverlayStyles() {
       cursor: pointer;
       font-size: 18px;
       line-height: 1;
+      align-self: center;
       transition:
         background 160ms ease,
         transform 160ms ease,
