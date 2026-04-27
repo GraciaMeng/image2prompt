@@ -19,10 +19,6 @@ export function registerContentMessageHandler() {
       return;
     }
 
-    if (message.type === "DEV_PAGE_RELOAD") {
-      return;
-    }
-
     const overlay = activeRequests.get(message.requestId);
     if (!overlay) {
       return;

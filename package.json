@@ -5,7 +5,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite build --watch --mode development",
+    "dev": "vite",
     "typecheck": "tsc --noEmit",
     "build": "tsc && vite build",
     "preview": "vite preview",
@@ -20,6 +20,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@crxjs/vite-plugin": "^2.4.0",
     "@types/chrome": "^0.0.292",
     "@types/node": "^25.6.0",
     "@types/react": "^18.3.3",

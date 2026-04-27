@@ -92,7 +92,7 @@ export function PromptOverlayView(props: {
     <div className="image2prompt-card" data-phase={props.phase}>
       <div className="image2prompt-header">
         <div className="image2prompt-title-wrap">
-          <div className="image2prompt-title">抽取提示词</div>
+          <div className="image2prompt-title">提取提示词</div>
           <span className="image2prompt-header-meta">正在将图片内容整理成可直接复用的提示词</span>
         </div>
         <button className="image2prompt-close" type="button" aria-label="关闭浮层" onClick={props.onClose}>

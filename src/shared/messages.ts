@@ -41,24 +41,14 @@ export type StreamStatusMessage = {
   status: string;
 };
 
-export type DevReloadExtensionMessage = {
-  type: "DEV_RELOAD_EXTENSION";
-};
-
-export type DevPageReloadMessage = {
-  type: "DEV_PAGE_RELOAD";
-};
-
 export type ContentMessage =
   | StartAnalyzeMessage
   | StreamStatusMessage
   | StreamChunkMessage
   | StreamDoneMessage
-  | StreamErrorMessage
-  | DevPageReloadMessage;
+  | StreamErrorMessage;
 
 export type RuntimeMessage =
   | AnalyzeImageMessage
   | ContentMessage
-  | DevReloadExtensionMessage
   | OpenOptionsPageMessage;

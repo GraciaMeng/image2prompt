@@ -11,7 +11,7 @@
 - 支持复制结果、失败后重试
 - 提供设置页，集中维护 `API Key`、`Base URL`、`Model` 与最近分析记录
 - 默认指向 OpenAI 风格接口，可接兼容服务
-- 开发模式支持轻量热更新轮询，方便本地调试
+- 开发模式基于 `CRXJS + Vite dev server` 提供扩展热更新，方便本地调试
 
 ## 交付与验收文档
 
@@ -51,13 +51,13 @@ npm install
 pnpm install
 ```
 
-启动持续构建：
+启动开发服务器：
 
 ```bash
 npm run dev
 ```
 
-开发模式会持续监听源码并输出到 `dist/`。此模式会额外生成 `dist/hot-update.json`，用于扩展侧轮询并自动触发重载。
+开发模式现在使用 `@crxjs/vite-plugin`。`npm run dev` 会启动真正的 Vite dev server，并在 `dist/` 里生成供 Chrome 加载的开发扩展壳；页面脚本与 content script 支持 HMR，background service worker 变更时会触发扩展 reload。
 
 首次加载时，需要在 Chrome 中手动加载一次 `dist/`：
 
@@ -66,17 +66,29 @@ npm run dev
 3. 选择“加载已解压的扩展程序”
 4. 选择当前项目下的 `dist/` 目录
 
+推荐的日常开发流程：
+
+1. 终端执行 `npm run dev`
+2. Chrome 里只在第一次手动加载一次 `dist/`
+3. 保持 `npm run dev` 进程持续运行
+4. 修改页面、popup、options 或 content script 代码后，观察浏览器内联动更新
+
+补充说明：
+
+- 如果你修改的是 [manifest.config.ts](/Users/mengjiaxi/code/frontend/chrome-extension/image2prompt/manifest.config.ts) 或 background 入口，CRXJS 会触发整扩展 reload，而不是保留运行时状态的组件级 HMR
+- `dist/` 仍然是 Chrome 里加载的唯一目录，但开发态依赖 Vite dev server；关掉 `npm run dev` 后，开发版扩展也会失去热更新能力
+
 ### 生产构建
 
 ```bash
 npm run build
 ```
 
-生产构建会输出可打包提交的 `dist/` 目录，并自动移除仅开发模式需要的热更新资源声明。
+生产构建会输出可打包提交的 `dist/` 目录。
 
 ## 权限说明
 
-当前 `manifest.json` 申请了以下权限：
+当前 [manifest.config.ts](/Users/mengjiaxi/code/frontend/chrome-extension/image2prompt/manifest.config.ts) 申请了以下权限：
 
 - `contextMenus`：为网页图片添加右键入口“分析图片并提取 Prompt”
 - `storage`：保存用户配置、插件内部分析规则快照和本地分析记录
@@ -86,7 +98,6 @@ npm run build
 
 补充说明：
 
-- `alarms` 仅用于开发模式下的热更新轮询，生产构建产物中会自动剔除
 - 本扩展不会声明不必要的外部跳转、远程代码或自动更新地址
 
 ## 隐私与数据流
@@ -118,7 +129,7 @@ npm run build
 - 当前测试主要覆盖共享逻辑，不包含真实 Chrome 环境下的端到端验证
 - 扩展依赖外部多模态接口质量，输出 prompt 的稳定性受模型能力、图片质量和内部分析规则影响
 - 若目标图片受跨域、懒加载、重定向或站点防护影响，实际可分析结果可能与页面看到的不完全一致
-- 热更新机制只面向本地开发，不等同于完整 HMR
+- background 与 manifest 变更仍属于扩展级 reload，不等同于保留组件状态的完整 HMR
 - 当前接口兼容层以 OpenAI 风格 `chat/completions` 为中心，未内建多 provider 适配
 - 设置页与弹窗中的“最近分析记录”依赖至少一次成功分析；在没有真实数据前会展示空态提示，但成功分析后会自动写回本地历史库
 
@@ -160,12 +171,13 @@ npm run check
 - `typecheck`：只做 TypeScript 类型检查
 - `test:run`：运行 `tests/` 下的无头单元测试
 - `build`：执行类型检查并产出扩展构建结果
-- `verify:dist`：校验生产构建产物是否移除了开发期权限与热更新资源，并检查发布必需文件
+- `verify:dist`：校验生产构建产物中的 manifest 与入口文件是否完整，并确认不再包含旧的热更新探针残留
 - `check`：按“类型检查 -> 单元测试 -> 生产构建 -> 构建产物校验”顺序跑完整校验
 
 ## 项目结构
 
 ```text
+manifest.config.ts
 src/
   background/
     context-menu.ts
@@ -184,7 +196,6 @@ src/
     styles.css
   shared/
     constants.ts
-    dev.ts
     image.ts
     messages.ts
     storage.ts
