@@ -1,6 +1,8 @@
+import { createRoot, type Root } from "react-dom/client";
 import { getImageAnchor } from "../shared/image";
 import type { ImageAnchor } from "../shared/types";
-import { ensureOverlayStyles } from "./prompt-overlay.css";
+import { ensureOverlayStyles } from "./prompt-overlay-style";
+import { PromptOverlayView, type OverlayPhase } from "./content-ui";
 
 type PromptOverlayOptions = {
   onRetry: () => void;
@@ -11,139 +13,48 @@ type PromptOverlayOptions = {
 
 type AnchorResolver = () => ImageAnchor;
 
-type OverlayPhase = "preparing" | "streaming" | "success" | "error";
-
 const CARD_WIDTH = 348;
 const CARD_MARGIN = 16;
 const VIEWPORT_MARGIN = 12;
 const COPY_RESET_DELAY = 1500;
+
 export class PromptOverlay {
   private readonly host: HTMLDivElement;
   private readonly shell: HTMLDivElement;
-  private readonly copyButton: HTMLButtonElement;
-  private readonly retryButton: HTMLButtonElement;
-  private readonly settingsButton: HTMLButtonElement;
-  private readonly statusText: HTMLSpanElement;
-  private readonly footerHint: HTMLSpanElement;
-  private readonly trustNote: HTMLDivElement;
-  private readonly bodyText: HTMLPreElement;
+  private readonly root: Root;
   private readonly cleanupFns: Array<() => void> = [];
-  private readonly scrollParents = new Set<EventTarget>();
-
   private accumulated = "";
   private destroyed = false;
   private copyResetTimer: number | null = null;
   private repositionFrame: number | null = null;
-  private lastPhase: OverlayPhase = "preparing";
+  private phase: OverlayPhase = "preparing";
+  private statusText = "正在准备图片分析任务...";
+  private metaText = "准备就绪";
+  private footerHint = "面板会跟随图片位置自动贴边";
+  private copyLabel = "复制文本";
+  private copyDisabled = true;
+  private retryDisabled = true;
+  private settingsHidden = true;
+  private bodyText = "准备读取图片信息并发起 Prompt 提取...";
 
   constructor(
     private readonly resolveAnchor: AnchorResolver,
     private readonly options: PromptOverlayOptions
   ) {
     ensureOverlayStyles();
-    destroyExistingOverlayNodes();
-
     this.host = document.createElement("div");
     this.host.className = "image2prompt-layer";
     this.host.setAttribute("role", "dialog");
     this.host.setAttribute("aria-live", "polite");
     this.host.dataset.phase = "preparing";
-
     this.shell = document.createElement("div");
-    this.shell.className = "image2prompt-card";
-    this.shell.dataset.phase = "preparing";
-
-    const header = document.createElement("div");
-    header.className = "image2prompt-header";
-
-    const titleWrap = document.createElement("div");
-    titleWrap.className = "image2prompt-title-wrap";
-
-    const title = document.createElement("div");
-    title.className = "image2prompt-title";
-    title.textContent = "抽取提示词";
-
-    const subtitle = document.createElement("span");
-    subtitle.className = "image2prompt-header-meta";
-    subtitle.textContent = "正在将图片内容整理成可直接复用的提示词";
-    titleWrap.append(title, subtitle);
-
-    const closeButton = document.createElement("button");
-    closeButton.className = "image2prompt-close";
-    closeButton.type = "button";
-    closeButton.setAttribute("aria-label", "关闭浮层");
-    closeButton.textContent = "×";
-    closeButton.addEventListener("click", () => this.destroy());
-    header.append(titleWrap, closeButton);
-
-    const status = document.createElement("div");
-    status.className = "image2prompt-status";
-    const dot = document.createElement("span");
-    dot.className = "image2prompt-dot";
-    this.statusText = document.createElement("span");
-    this.statusText.className = "image2prompt-status-text";
-    this.statusText.textContent = "正在准备图片分析任务...";
-    status.append(dot, this.statusText);
-
-    this.trustNote = document.createElement("div");
-    this.trustNote.className = "image2prompt-trust-note";
-    this.trustNote.textContent = "结果会保留在本地页面浮层中，可随时复制或重试。";
-
-    this.bodyText = document.createElement("pre");
-    this.bodyText.className = "image2prompt-content";
-    this.bodyText.textContent = "准备读取图片信息并发起 Prompt 提取...";
-
-    const actions = document.createElement("div");
-    actions.className = "image2prompt-actions";
-
-    this.copyButton = document.createElement("button");
-    this.copyButton.className = "image2prompt-copy";
-    this.copyButton.type = "button";
-    this.copyButton.textContent = "复制文本";
-    this.copyButton.disabled = true;
-    this.copyButton.addEventListener("click", () => {
-      void this.handleCopy();
-    });
-
-    this.retryButton = document.createElement("button");
-    this.retryButton.className = "image2prompt-retry";
-    this.retryButton.type = "button";
-    this.retryButton.textContent = "重新分析";
-    this.retryButton.disabled = true;
-    this.retryButton.addEventListener("click", () => {
-      this.reset();
-      this.options.onRetry();
-    });
-
-    this.settingsButton = document.createElement("button");
-    this.settingsButton.className = "image2prompt-settings";
-    this.settingsButton.type = "button";
-    this.settingsButton.textContent = "去设置";
-    this.settingsButton.hidden = true;
-    this.settingsButton.addEventListener("click", () => {
-      this.options.onOpenSettings?.();
-    });
-
-    actions.append(this.retryButton, this.copyButton, this.settingsButton);
-
-    const footer = document.createElement("div");
-    footer.className = "image2prompt-footer";
-
-    this.footerHint = document.createElement("span");
-    this.footerHint.className = "image2prompt-footer-hint";
-    this.footerHint.textContent = "面板会跟随图片位置自动贴边";
-    footer.append(this.footerHint);
-
-    this.shell.append(header, status, this.trustNote, this.bodyText, actions, footer);
     this.host.append(this.shell);
     document.body.appendChild(this.host);
-
+    this.root = createRoot(this.shell);
     this.bindLifecycleEvents();
-    this.updatePhase("preparing", "正在准备图片分析任务...", "准备就绪");
-    this.syncContent();
+    this.render();
     this.scheduleReposition();
   }
-
   append(chunk: string) {
     if (this.destroyed) {
       return;
@@ -168,16 +79,16 @@ export class PromptOverlay {
       return;
     }
 
-    const content = this.accumulated.trim();
-    if (!content) {
+    if (!this.accumulated.trim()) {
       this.syncContent();
     }
 
     this.updatePhase("success", "Prompt 已生成，可直接复制并继续复用。", "结果已生成");
-    this.copyButton.disabled = !this.accumulated.trim();
-    this.retryButton.disabled = false;
-    this.settingsButton.hidden = true;
-    this.footerHint.textContent = "结果已固定，可复制到你常用的工作流里继续使用";
+    this.copyDisabled = !this.accumulated.trim();
+    this.retryDisabled = false;
+    this.settingsHidden = true;
+    this.footerHint = "结果已固定，可复制到你常用的工作流里继续使用";
+    this.render();
   }
 
   fail(error: string, options: { showSettingsAction?: boolean } = {}) {
@@ -186,14 +97,15 @@ export class PromptOverlay {
     }
 
     const message = error.trim() || "分析失败，请稍后重试。";
-    this.bodyText.textContent = `错误：${message}`;
+    this.bodyText = `错误：${message}`;
     this.updatePhase("error", message, "分析失败");
-    this.copyButton.disabled = true;
-    this.retryButton.disabled = false;
-    this.settingsButton.hidden = !options.showSettingsAction;
-    this.footerHint.textContent = options.showSettingsAction
+    this.copyDisabled = true;
+    this.retryDisabled = false;
+    this.settingsHidden = !options.showSettingsAction;
+    this.footerHint = options.showSettingsAction
       ? "先补齐配置并保存，再回来重试，不需要重新选择图片"
       : "你可以直接重试，不需要重新选择图片";
+    this.render();
   }
 
   reset() {
@@ -203,11 +115,11 @@ export class PromptOverlay {
 
     this.accumulated = "";
     this.clearTimers();
-    this.copyButton.textContent = "复制文本";
-    this.copyButton.disabled = true;
-    this.retryButton.disabled = true;
-    this.settingsButton.hidden = true;
-    this.footerHint.textContent = "分析面板会跟随图片位置更新";
+    this.copyLabel = "复制文本";
+    this.copyDisabled = true;
+    this.retryDisabled = true;
+    this.settingsHidden = true;
+    this.footerHint = "分析面板会跟随图片位置更新";
     this.syncContent();
     this.updatePhase("preparing", "正在准备图片分析任务...", "准备就绪");
     this.scheduleReposition();
@@ -224,46 +136,48 @@ export class PromptOverlay {
       cleanup();
     }
     this.cleanupFns.length = 0;
+    this.root.unmount();
     this.host.remove();
     this.options.onClose?.();
   }
 
   private updatePhase(phase: OverlayPhase, status: string, meta: string) {
-    this.lastPhase = phase;
+    this.phase = phase;
     this.host.dataset.phase = phase;
-    this.shell.dataset.phase = phase;
-    this.statusText.textContent = status;
-    this.trustNote.textContent = meta;
+    this.statusText = status;
+    this.metaText = meta;
+    this.render();
   }
 
   private syncContent() {
-    const text = this.accumulated.trim();
-    const fallback = "准备读取图片信息并发起 Prompt 提取...";
-    this.bodyText.textContent = text || fallback;
-    this.bodyText.className = "image2prompt-content";
+    this.bodyText = this.accumulated.trim() || "准备读取图片信息并发起 Prompt 提取...";
+    this.render();
   }
 
   private async handleCopy() {
-    if (!this.accumulated.trim() || this.copyButton.disabled) {
+    if (!this.accumulated.trim() || this.copyDisabled) {
       return;
     }
 
     try {
       await navigator.clipboard.writeText(this.accumulated);
-      this.copyButton.textContent = "已复制";
-      this.footerHint.textContent = "复制成功，可以直接粘贴到你常用的 AI 或绘图工具里";
+      this.copyLabel = "已复制";
+      this.footerHint = "复制成功，可以直接粘贴到你常用的 AI 或绘图工具里";
+      this.render();
       this.copyResetTimer = window.setTimeout(() => {
         if (this.destroyed) {
           return;
         }
-        this.copyButton.textContent = "复制文本";
-        this.footerHint.textContent =
-          this.lastPhase === "success"
+        this.copyLabel = "复制文本";
+        this.footerHint =
+          this.phase === "success"
             ? "结果已固定，可复制到你常用的工作流里继续使用"
             : "分析面板会跟随图片位置更新";
+        this.render();
       }, COPY_RESET_DELAY);
     } catch {
-      this.footerHint.textContent = "复制失败，请检查页面剪贴板权限";
+      this.footerHint = "复制失败，请检查页面剪贴板权限";
+      this.render();
     }
   }
 
@@ -288,14 +202,9 @@ export class PromptOverlay {
     this.cleanupFns.push(() => document.removeEventListener("keydown", onKeyDown, true));
 
     for (const target of getScrollParents(this.options.trackedNode ?? this.host)) {
-      if (this.scrollParents.has(target)) {
-        continue;
-      }
-
       const listener = () => this.scheduleReposition();
       target.addEventListener("scroll", listener, { passive: true });
       this.cleanupFns.push(() => target.removeEventListener("scroll", listener));
-      this.scrollParents.add(target);
     }
   }
 
@@ -327,8 +236,11 @@ export class PromptOverlay {
     const rightAlignedLeft = anchorLeft + anchor.width + CARD_MARGIN;
     const leftAlignedLeft = anchorLeft - CARD_MARGIN - CARD_WIDTH;
 
-    let left = hasRoomRight ? rightAlignedLeft : leftAlignedLeft;
-    left = clamp(left, viewportLeft + VIEWPORT_MARGIN, viewportLeft + viewportWidth - CARD_WIDTH - VIEWPORT_MARGIN);
+    const left = clamp(
+      hasRoomRight ? rightAlignedLeft : leftAlignedLeft,
+      viewportLeft + VIEWPORT_MARGIN,
+      viewportLeft + viewportWidth - CARD_WIDTH - VIEWPORT_MARGIN
+    );
 
     const maxTop = viewportTop + viewportHeight - this.host.offsetHeight - VIEWPORT_MARGIN;
     const preferredTop = anchorTop;
@@ -354,6 +266,33 @@ export class PromptOverlay {
       window.cancelAnimationFrame(this.repositionFrame);
       this.repositionFrame = null;
     }
+  }
+
+  private render() {
+    this.root.render(
+      <PromptOverlayView
+        phase={this.phase}
+        statusText={this.statusText}
+        metaText={this.metaText}
+        bodyText={this.bodyText}
+        footerHint={this.footerHint}
+        copyDisabled={this.copyDisabled}
+        retryDisabled={this.retryDisabled}
+        settingsHidden={this.settingsHidden}
+        copyLabel={this.copyLabel}
+        onClose={() => this.destroy()}
+        onCopy={() => {
+          void this.handleCopy();
+        }}
+        onRetry={() => {
+          this.reset();
+          this.options.onRetry();
+        }}
+        onOpenSettings={() => {
+          this.options.onOpenSettings?.();
+        }}
+      />
+    );
   }
 }
 
@@ -387,21 +326,11 @@ function normalizePhase(status: string): { phase: OverlayPhase; meta: string } {
     return { phase: "error", meta: "失败" };
   }
 
-  if (
-    value.includes("完成") ||
-    value.includes("成功") ||
-    value.includes("done") ||
-    value.includes("完成生成")
-  ) {
+  if (value.includes("完成") || value.includes("成功") || value.includes("done") || value.includes("完成生成")) {
     return { phase: "success", meta: "已完成" };
   }
 
-  if (
-    value.includes("准备") ||
-    value.includes("排队") ||
-    value.includes("请求") ||
-    value.includes("上传")
-  ) {
+  if (value.includes("准备") || value.includes("排队") || value.includes("请求") || value.includes("上传")) {
     return { phase: "preparing", meta: "准备中" };
   }
 
@@ -414,21 +343,16 @@ function getScrollParents(element: HTMLElement): EventTarget[] {
 
   while (current) {
     const style = window.getComputedStyle(current);
-    const overflowValue = `${style.overflow}${style.overflowX}${style.overflowY}`;
-    if (/(auto|scroll|overlay)/.test(overflowValue)) {
+    if (/(auto|scroll|overlay)/.test(`${style.overflow}${style.overflowX}${style.overflowY}`)) {
       targets.push(current);
     }
+
     if (current === document.body) {
       break;
     }
+
     current = current.parentElement;
   }
 
   return targets;
-}
-
-function destroyExistingOverlayNodes() {
-  for (const node of document.querySelectorAll(".image2prompt-layer")) {
-    node.remove();
-  }
 }

@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "node:path";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import * as esbuild from "esbuild";
 
 function extensionHotFilePlugin(mode: string) {
   return {
@@ -54,8 +55,41 @@ function releaseManifestPlugin(mode: string) {
   };
 }
 
+function standaloneContentPlugin() {
+  return {
+    name: "standalone-content",
+    async closeBundle() {
+      await esbuild.build({
+        entryPoints: [resolve(__dirname, "src/content/main.tsx")],
+        bundle: true,
+        format: "iife",
+        platform: "browser",
+        target: "es2022",
+        outfile: resolve(__dirname, "dist/content.js"),
+        sourcemap: false,
+        logLevel: "silent",
+        plugins: [
+          {
+            name: "css-raw-loader",
+            setup(build) {
+              build.onResolve({ filter: /\.css\?raw$/ }, (args) => ({
+                path: resolve(args.resolveDir, args.path.replace(/\?raw$/, "")),
+                namespace: "css-raw"
+              }));
+              build.onLoad({ filter: /\.css$/, namespace: "css-raw" }, async (args) => ({
+                contents: `export default ${JSON.stringify(readFileSync(args.path, "utf8"))};`,
+                loader: "js"
+              }));
+            }
+          }
+        ]
+      });
+    }
+  };
+}
+
 export default defineConfig(({ mode }) => ({
-  plugins: [react(), extensionHotFilePlugin(mode), releaseManifestPlugin(mode)],
+  plugins: [react(), extensionHotFilePlugin(mode), standaloneContentPlugin(), releaseManifestPlugin(mode)],
   build: {
     outDir: "dist",
     emptyOutDir: true,
@@ -63,16 +97,12 @@ export default defineConfig(({ mode }) => ({
       input: {
         options: resolve(__dirname, "index.html"),
         popup: resolve(__dirname, "popup.html"),
-        background: resolve(__dirname, "src/background/main.ts"),
-        content: resolve(__dirname, "src/content/main.ts")
+        background: resolve(__dirname, "src/background/main.ts")
       },
       output: {
         entryFileNames: (chunkInfo) => {
           if (chunkInfo.name === "background") {
             return "background.js";
-          }
-          if (chunkInfo.name === "content") {
-            return "content.js";
           }
           return "assets/[name]-[hash].js";
         }
