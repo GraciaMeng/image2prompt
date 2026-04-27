@@ -25,7 +25,6 @@ export function LibraryPanel({ library }: LibraryPanelProps) {
       <div className="panel-header">
         <div className="panel-heading">
           <p className="panel-kicker">历史记录</p>
-          <h2>最近分析结果</h2>
           <p className="panel-description">这里会展示真实分析记录，方便回看来源页面、模型信息和最近结果。</p>
         </div>
         <div className="history-count">{library ? `${library.records.length} 条` : "读取中"}</div>

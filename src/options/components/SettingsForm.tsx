@@ -1,67 +1,38 @@
-import { MODEL_PRESETS } from "../../shared/constants";
 import type { ExtensionSettings, SettingsValidationErrors } from "../../shared/types";
 import { FormField } from "./FormField";
 
 type SettingsFormProps = {
   settings: ExtensionSettings;
   validationErrors: SettingsValidationErrors;
-  disablePresetActions?: boolean;
   onChange: <K extends keyof ExtensionSettings>(key: K, value: ExtensionSettings[K]) => void;
-  onApplyModelPreset: (presetId: string) => void;
-  onResetModel: () => void;
 };
 
-export function SettingsForm({
-  settings,
-  validationErrors,
-  disablePresetActions,
-  onChange,
-  onApplyModelPreset,
-  onResetModel
-}: SettingsFormProps) {
+export function SettingsForm({ settings, validationErrors, onChange }: SettingsFormProps) {
   return (
     <div className="settings-form">
       <div className="panel-heading">
         <p className="panel-kicker">模型配置</p>
-        <h2>连接到你的推理服务</h2>
         <p className="panel-description">
-          建议先选一个可靠的模型预设，再补齐 API Key。分析规则由插件内部统一维护，这里只负责模型接入。
+          模型接入改为固定手动配置，不再提供模型预设。分析规则由插件内部统一维护，这里只负责连接信息。
         </p>
       </div>
 
       <div className="section-note">设置完成后，网页图片上的右键入口和悬浮入口都会直接复用这里的模型配置。</div>
 
       <FormField
-        label="模型预设"
-        description="快速填入常用接口与模型组合。应用预设不会覆盖你已填写的 API Key。"
-        actions={
-          <button type="button" className="ghost-button subtle-button" onClick={onResetModel} disabled={disablePresetActions}>
-            恢复默认
-          </button>
-        }
+        label="Base URL"
+        description="填写到接口根路径即可，保存时会自动去掉末尾斜杠。"
+        error={validationErrors.baseUrl}
+        hint="例如 https://api.openai.com/v1"
       >
-        <div className="preset-grid">
-          {MODEL_PRESETS.map((preset) => {
-            const active = preset.baseUrl === settings.baseUrl && preset.model === settings.model;
-            return (
-              <button
-                key={preset.id}
-                type="button"
-                className={`preset-card${active ? " is-active" : ""}`}
-                onClick={() => onApplyModelPreset(preset.id)}
-                disabled={disablePresetActions}
-              >
-                <span className="preset-title">{preset.label}</span>
-                <span className="preset-description">{preset.description}</span>
-                <span className="preset-meta">
-                  {preset.baseUrl}
-                  {" / "}
-                  {preset.model}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        <input
+          type="url"
+          value={settings.baseUrl}
+          onChange={(event) => onChange("baseUrl", event.target.value)}
+          placeholder="https://api.openai.com/v1"
+          autoComplete="off"
+          spellCheck={false}
+        />
       </FormField>
 
       <FormField
@@ -75,22 +46,6 @@ export function SettingsForm({
           value={settings.apiKey}
           onChange={(event) => onChange("apiKey", event.target.value)}
           placeholder="sk-..."
-          autoComplete="off"
-          spellCheck={false}
-        />
-      </FormField>
-
-      <FormField
-        label="Base URL"
-        description="填写到接口根路径即可，保存时会自动去掉末尾斜杠。"
-        error={validationErrors.baseUrl}
-        hint="例如 https://api.openai.com/v1"
-      >
-        <input
-          type="url"
-          value={settings.baseUrl}
-          onChange={(event) => onChange("baseUrl", event.target.value)}
-          placeholder="https://api.openai.com/v1"
           autoComplete="off"
           spellCheck={false}
         />
