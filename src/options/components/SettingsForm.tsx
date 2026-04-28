@@ -11,7 +11,7 @@ export function SettingsForm({ settings, validationErrors, onChange }: SettingsF
   return (
     <div className="settings-form">
       <div className="panel-heading">
-        <p className="panel-kicker">模型配置</p>
+        <h2 className="panel-title">模型配置</h2>
         <p className="panel-description">
           模型接入改为固定手动配置，不再提供模型预设。分析规则由插件内部统一维护，这里只负责连接信息。
         </p>

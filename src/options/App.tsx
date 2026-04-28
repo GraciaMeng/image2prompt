@@ -79,7 +79,7 @@ export function App() {
 
   const validationErrors = useMemo(() => validateSettings(settings), [settings]);
   const isDirty = useMemo(() => !isSameSettings(settings, initialSettings), [initialSettings, settings]);
-  const historyCount = library?.records.length ?? 0;
+  const pageTitle = activeView === "settings" ? "模型配置" : "历史记录";
 
   return (
     <main className="page-shell">
@@ -92,6 +92,7 @@ export function App() {
 
           <nav className="side-nav">
             <div className="side-nav-group">
+              <p className="side-nav-group-title">工作台</p>
               <button
                 type="button"
                 className={`side-nav-item${activeView === "settings" ? " is-active" : ""}`}
@@ -101,7 +102,6 @@ export function App() {
                 <span className="side-nav-copy">
                   <span className="side-nav-label">模型配置</span>
                 </span>
-                {isDirty ? <span className="side-nav-badge">●</span> : null}
               </button>
               <button
                 type="button"
@@ -112,30 +112,37 @@ export function App() {
                 <span className="side-nav-copy">
                   <span className="side-nav-label">历史记录</span>
                 </span>
-                <span className="side-nav-badge">{library?.records.length ?? 0}</span>
               </button>
             </div>
           </nav>
         </aside>
 
         <section className="workspace-panel">
-          <div className="panel-topbar" aria-live="polite">
-            <span className={`panel-status${isDirty ? " is-dirty" : ""}`}>{isDirty ? "未保存修改" : "已同步"}</span>
-            <span className="panel-status-copy">{status || `最近保存：${formatTimestamp(lastSavedAt)}`}</span>
-          </div>
-          {activeView === "settings" ? (
-            <>
-              <SettingsForm settings={settings} validationErrors={validationErrors} onChange={updateField} />
-              <div className="panel-actions">
-                <button type="button" onClick={handleSave} disabled={isSaving || !isDirty}>
-                  {isSaving ? "保存中..." : isDirty ? "保存模型配置" : "已保存"}
-                </button>
-                <p className="panel-footnote">保存到浏览器同步存储，右键与悬浮入口会直接复用当前模型配置。</p>
+          <div className="workspace-content">
+            <section className="hero-panel">
+              <div>
+                <p className="hero-kicker">配置中心</p>
+                <h1 className="hero-title">{pageTitle}</h1>
+                <p className="hero-summary">{status || `最近保存于 ${formatTimestamp(lastSavedAt)}`}</p>
               </div>
-            </>
-          ) : (
-            <LibraryPanel library={library} />
-          )}
+            </section>
+
+            <section className="content-panel">
+              {activeView === "settings" ? (
+                <>
+                  <SettingsForm settings={settings} validationErrors={validationErrors} onChange={updateField} />
+                  <div className="panel-actions">
+                    <button type="button" onClick={handleSave} disabled={isSaving || !isDirty}>
+                      {isSaving ? "保存中..." : isDirty ? "保存模型配置" : "已保存"}
+                    </button>
+                    <p className="panel-footnote">保存到浏览器同步存储，右键与悬浮入口会直接复用当前模型配置。</p>
+                  </div>
+                </>
+              ) : (
+                <LibraryPanel library={library} />
+              )}
+            </section>
+          </div>
         </section>
       </div>
     </main>
