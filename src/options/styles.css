@@ -422,8 +422,7 @@ h2 {
 .record-meta,
 .record-note,
 .panel-footnote,
-.empty-state,
-.inline-feedback {
+.empty-state {
   color: var(--text-subtle);
   line-height: 1.65;
 }
@@ -524,10 +523,22 @@ input:focus {
   padding: 5px 10px;
 }
 
-.inline-feedback {
-  margin: 0 0 12px;
+.toast-message {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(calc(100% - 24px), 520px);
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: #1f2b46;
+  color: #f5f8ff;
   font-size: 13px;
-  color: #385eb6;
+  line-height: 1.5;
+  box-shadow: 0 8px 24px rgba(19, 26, 44, 0.18);
+  z-index: 9999;
+  pointer-events: none;
 }
 
 .empty-state {

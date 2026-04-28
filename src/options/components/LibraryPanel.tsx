@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { AnalysisLibraryStore, AnalysisRecord } from "../../shared/types";
 
 type LibraryPanelProps = {
@@ -6,17 +6,27 @@ type LibraryPanelProps = {
 };
 
 export function LibraryPanel({ library }: LibraryPanelProps) {
-  const [feedback, setFeedback] = useState("");
+  const [toast, setToast] = useState("");
+  const toastTimerRef = useRef<number | null>(null);
   const records = useMemo(() => library?.records.slice(0, 8) ?? [], [library]);
+
+  const showToast = (message: string) => {
+    setToast(message);
+    if (toastTimerRef.current !== null) {
+      window.clearTimeout(toastTimerRef.current);
+    }
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast("");
+      toastTimerRef.current = null;
+    }, 2200);
+  };
 
   const handleCopy = async (record: AnalysisRecord) => {
     try {
       await navigator.clipboard.writeText(record.outputPrompt);
-      const message = `已复制 ${getRecordTitle(record)} 的分析结果。`;
-      setFeedback(message);
-      window.setTimeout(() => setFeedback((current) => (current === message ? "" : current)), 2200);
+      showToast(`已复制 ${getRecordTitle(record)} 的分析结果。`);
     } catch {
-      setFeedback("复制失败，请稍后重试。");
+      showToast("复制失败，请稍后重试。");
     }
   };
 
@@ -30,7 +40,11 @@ export function LibraryPanel({ library }: LibraryPanelProps) {
         <div className="history-count">{library ? `${library.records.length} 条` : "读取中"}</div>
       </div>
 
-      {feedback ? <p className="inline-feedback">{feedback}</p> : null}
+      {toast ? (
+        <div className="toast-message" role="status" aria-live="polite">
+          {toast}
+        </div>
+      ) : null}
 
       {!library ? (
         <div className="empty-state">
